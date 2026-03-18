@@ -191,12 +191,100 @@ scripts/, docs/screenshots/
 
 ---
 
-## [Sprint 2] — Chưa bắt đầu
+## [Sprint 2] — 2026-03-19 ✅ HOÀN THÀNH
 
-Kế hoạch:
-- Frontend React (Dashboard, ProductSearch, ProductDetail, PriceCompare, Trending, Alerts)
-- ML features (Prophet, IsolationForest, fake review detection)
-- APScheduler (crawl 6h, analytics daily, retrain weekly)
+### Tóm tắt
+React frontend 6 trang hoàn chỉnh, `npm run build` pass, dark mode, Alerts CRUD, Shopee Playwright spider.
+
+### Verified
+- `npm run build` → 0 errors, `dist/` tạo thành công (2499 modules, 4.24s)
+- Bundle: 674 kB JS (199 kB gzip), 20 kB CSS
+- 6 pages render đúng cấu trúc, proxy `/api` → backend:8000
+
+---
+
+### Wave 1 — Frontend Foundation
+
+**Files tạo mới:**
+- `frontend/package.json` — React 18, Vite 5, TailwindCSS 3, React Router v6, @tanstack/react-query v5, Axios, Recharts, Zustand, lucide-react, clsx
+- `frontend/vite.config.js` — dev proxy `/api` → `http://localhost:8000`, port 3000
+- `frontend/tailwind.config.js` — darkMode: 'class', custom colors: primary, shopee (#EE4D2D), tiki (#0D5CB6), lazada (#0F146D)
+- `frontend/postcss.config.js` — tailwindcss + autoprefixer
+- `frontend/index.html` — SPA entry point
+- `frontend/src/index.css` — @tailwind base/components/utilities
+- `frontend/src/main.jsx` — QueryClient (staleTime 30s), BrowserRouter, React.StrictMode
+- `frontend/src/App.jsx` — Routes: /, /search, /products/:id, /compare, /trending, /alerts
+
+---
+
+### Wave 2 — Services, Hooks, Store, Utils
+
+**Files tạo mới trong `frontend/src/`:**
+- `services/api.js` — Axios instance baseURL '/api/v1', interceptor trả `response.data`, error message extraction
+- `services/productService.js` — search, getById, getPriceHistory, getReviews
+- `services/analyticsService.js` — getTrending, getPriceComparison, getMarketOverview, getCategoryInsights
+- `services/alertService.js` — create, list (by email), delete
+- `hooks/useDebounce.js` — debounce hook với setTimeout/clearTimeout
+- `hooks/useProducts.js` — useProducts, useProduct, useProductReviews (React Query)
+- `hooks/usePriceHistory.js` — usePriceHistory với period param
+- `hooks/useAnalytics.js` — useMarketOverview (stale 60s), useTrending (refetch 5min), usePriceComparison
+- `store/useProductStore.js` — Zustand: searchQuery, selectedProduct
+- `store/useFilterStore.js` — Zustand: platform, sortBy, sortOrder, setFilter, resetFilters
+- `utils/formatPrice.js` — formatPrice (Intl VND), formatPriceShort (tr₫/k₫)
+- `utils/formatDate.js` — formatDate (vi-VN), formatRelativeTime (h trước / d trước)
+- `utils/constants.js` — PLATFORM_COLORS, PLATFORM_LABELS, SORT_OPTIONS, BUY_SIGNAL_CONFIG, PERIOD_OPTIONS
+
+---
+
+### Wave 3 — Layout + Common Components
+
+**Files tạo mới trong `frontend/src/components/`:**
+- `layout/Header.jsx` — sticky header, search form (navigate /search?q=), dark mode toggle (localStorage), nav links
+- `layout/Sidebar.jsx` — NavLink với active state highlight, hidden on mobile
+- `layout/Layout.jsx` — Header + Sidebar + Outlet
+- `common/PriceTag.jsx` — current price (đỏ), original price (gạch), discount badge
+- `common/RatingStars.jsx` — 5 Star icons, fill active, review count
+- `common/BuySignalBadge.jsx` — dùng BUY_SIGNAL_CONFIG, fallback về 'hold'
+- `common/LoadingSkeleton.jsx` — CardSkeleton, StatSkeleton, TableRowSkeleton (animate-pulse)
+- `common/Pagination.jsx` — prev/next, page numbers, ellipsis, disabled states
+- `common/SearchBar.jsx` — icon Search, clear button (X), controlled input
+- `common/ProductCard.jsx` — Link to /products/:id, lazy image, platform badge colored, discount badge
+
+---
+
+### Wave 4 — Chart Components
+
+**Files tạo mới trong `frontend/src/components/charts/`:**
+- `PriceHistoryChart.jsx` — AreaChart, linearGradient fill, custom tooltip, ReferenceLine cho min price
+- `PlatformCompareChart.jsx` — BarChart, Cell per platform với PLATFORM_COLORS
+- `SentimentChart.jsx` — PieChart donut (innerRadius 40, outerRadius 70), positive/neutral/negative
+
+---
+
+### Wave 5 — Pages
+
+**Files tạo mới trong `frontend/src/pages/`:**
+- `Dashboard.jsx` — 4 StatCards (products, price points, platforms, top category), platform distribution grid, best deals 8 products
+- `Trending.jsx` — 4 tabs (price_drop/best_seller/best_deal/most_reviewed), responsive 2-5 cols grid, 20 products
+- `ProductSearch.jsx` — SearchBar, sort dropdown (5 options), platform filter, result count, 20/page grid, Pagination, empty/error states
+- `ProductDetail.jsx` — hero (image, price, rating, buy signal, trend icon), 30d price stats (min/max/avg), PriceHistoryChart với period selector (7d/30d/90d), AlertModal inline, fake review warning (>10%)
+- `PriceCompare.jsx` — SearchBar + submit, comparison cards với min-price highlight (green row, ✓ Rẻ nhất label), price diff percent badge
+- `Alerts.jsx` — email lookup, create form (product autocomplete search, alert_type select, target price), list với triggered indicator, delete button
+
+---
+
+### Wave 6 — Shopee Crawler
+
+**Files tạo mới:**
+- `crawler/shopsmart_crawler/spiders/shopee_spider.py` — ShopeeSpider, Playwright headless Chromium, JSON API `shopee.vn/api/v4/search/search_items`, 8 từ khóa tìm kiếm, price ÷ 100000, yield 14 fields per product, errback handler
+
+---
+
+### Fix đã áp dụng
+
+| Vấn đề | Fix |
+|--------|-----|
+| alertService dynamic import trong ProductDetail gây Vite bundle conflict | Đổi sang static import ở top-level |
 
 ---
 
@@ -204,7 +292,8 @@ Kế hoạch:
 
 Kế hoạch:
 - AI Insights page
-- Shopee spider (Playwright)
+- ML features (Prophet price prediction, IsolationForest anomaly, fake review RandomForest)
+- APScheduler (crawl 6h, analytics daily, retrain weekly)
 - Full integration testing
 
 ---

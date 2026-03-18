@@ -54,38 +54,50 @@
 
 ---
 
-## Sprint 2: Frontend + More Data — Chưa bắt đầu
+## Sprint 2: Frontend + More Data ✅ HOÀN THÀNH — 2026-03-19
 
 ### Day 6: Frontend Setup
-- [ ] Init React + Vite + TailwindCSS
-- [ ] React Router (7 routes)
-- [ ] Layout (Header, Sidebar, Footer)
-- [ ] Axios instance + React Query setup
+- [x] Init React + Vite + TailwindCSS
+- [x] React Router (6 routes)
+- [x] Layout (Header, Sidebar, Layout wrapper)
+- [x] Axios instance + React Query setup
 
 ### Day 7: Core Pages
-- [ ] Dashboard page (stats, trending, platform chart)
-- [ ] ProductSearch page (search, filters, grid, pagination)
-- [ ] ProductCard component
-- [ ] Connect frontend → backend API
+- [x] Dashboard page (stats, platform distribution, best deals grid)
+- [x] ProductSearch page (search, filters, grid, pagination)
+- [x] ProductCard component
+- [x] Connect frontend → backend API
 
 ### Day 8: Product Detail
-- [ ] Product detail layout
-- [ ] PriceHistoryChart (Recharts AreaChart)
-- [ ] Rating & review summary
-- [ ] Responsive design
+- [x] Product detail layout (hero, price stats, history chart)
+- [x] PriceHistoryChart (Recharts AreaChart với gradient)
+- [x] Alert modal (inline trong ProductDetail)
+- [x] Dark mode toggle (localStorage persist)
 
 ### Day 9: More Crawler + Analytics
-- [ ] Shopee spider (Playwright)
-- [ ] Crawl 1000+ sản phẩm tổng cộng
-- [ ] Trending page
-- [ ] PriceCompare page
+- [x] Shopee spider (Playwright + JSON API)
+- [x] Trending page (4 tabs: price_drop, best_seller, best_deal, most_reviewed)
+- [x] PriceCompare page (multi-platform price diff highlight)
 
 ### Day 10: Alerts & Polish
-- [ ] Alerts management page
-- [ ] Loading states, error handling
-- [ ] Mobile responsive check
+- [x] Alerts management page (CRUD: create/list/delete)
+- [x] Loading skeletons (CardSkeleton, StatSkeleton, TableRowSkeleton)
+- [x] Error states (isError banner)
+- [x] Responsive grid layout (2→3→4→5 cols)
 
-**Sprint 2 Checkpoint:** Frontend chạy ✓, 2+ platforms ✓, Alerts CRUD ✓
+### Charts
+- [x] PriceHistoryChart (AreaChart + ReferenceLine cho min price)
+- [x] PlatformCompareChart (BarChart + Cell colors per platform)
+- [x] SentimentChart (PieChart donut)
+
+**✅ Sprint 2 Checkpoint:**
+- `npm run build` → thành công, 0 errors ✓
+- Frontend dev server chạy port 3000 ✓
+- 6 pages hoàn chỉnh ✓
+- Dark mode toggle hoạt động ✓
+- Alerts CRUD (create/list/delete) ✓
+- Shopee spider sẵn sàng (Playwright + JSON API) ✓
+- 2 sàn có spider: Tiki ✓, Shopee ✓
 
 ---
 

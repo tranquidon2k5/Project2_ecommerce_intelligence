@@ -1,8 +1,9 @@
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { ExternalLink, Bell, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react'
 import { useProduct } from '../hooks/useProducts'
 import { usePriceHistory } from '../hooks/usePriceHistory'
+import { alertService } from '../services/alertService'
 import PriceTag from '../components/common/PriceTag'
 import RatingStars from '../components/common/RatingStars'
 import BuySignalBadge from '../components/common/BuySignalBadge'
@@ -23,7 +24,6 @@ function AlertModal({ productId, productName, onClose }) {
     e.preventDefault()
     setLoading(true)
     try {
-      const { alertService } = await import('../services/alertService')
       await alertService.create({
         product_id: productId,
         user_email: email,

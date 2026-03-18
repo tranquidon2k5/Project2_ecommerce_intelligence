@@ -1,0 +1,89 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shopsmart}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shopsmart123}
+      POSTGRES_DB: ${POSTGRES_DB:-shopsmart_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shopsmart}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopsmart-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopsmart-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-shopsmart}:${POSTGRES_PASSWORD:-shopsmart123}@db:5432/${POSTGRES_DB:-shopsmart_db}
+      SYNC_DATABASE_URL: postgresql://${POSTGRES_USER:-shopsmart}:${POSTGRES_PASSWORD:-shopsmart123}@db:5432/${POSTGRES_DB:-shopsmart_db}
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: ${APP_ENV:-production}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/app/scripts
+    networks:
+      - shopsmart-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - shopsmart-network
+
+  crawler:
+    build:
+      context: ./crawler
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-shopsmart}:${POSTGRES_PASSWORD:-shopsmart123}@db:5432/${POSTGRES_DB:-shopsmart_db}
+      CRAWLER_DELAY: ${CRAWLER_DELAY:-2}
+      CRAWLER_CONCURRENT: ${CRAWLER_CONCURRENT:-8}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - shopsmart-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  shopsmart-network:
+    driver: bridge

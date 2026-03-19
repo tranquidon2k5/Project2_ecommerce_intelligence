@@ -63,5 +63,44 @@ def compute_anomaly_score(prices: list[float]) -> float:
 
 
 def batch_compute_anomaly_scores(product_prices: dict[int, list[float]]) -> dict[int, float]:
-    """Compute anomaly scores for a batch of products. Returns {product_id: score}."""
-    return {pid: compute_anomaly_score(prices) for pid, prices in product_prices.items()}
+    """
+    Compute anomaly scores for a batch of products using a single shared model.
+    Returns {product_id: score}.
+    """
+    if not product_prices:
+        return {}
+
+    # Separate products with enough data from those without
+    eligible = {pid: prices for pid, prices in product_prices.items() if len(prices) >= 10}
+    result = {pid: 0.0 for pid in product_prices}  # default 0.0 for ineligible
+
+    if not eligible:
+        return result
+
+    # Build combined feature matrix with product index tracking
+    all_features = []
+    product_last_idx = {}  # pid -> index in all_features of its latest point
+    offset = 0
+    for pid, prices in eligible.items():
+        features = compute_price_features(prices)
+        all_features.append(features)
+        product_last_idx[pid] = offset + len(features) - 1
+        offset += len(features)
+
+    combined = np.vstack(all_features)
+    scaler = StandardScaler()
+    scaled = scaler.fit_transform(combined)
+
+    model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+    model.fit(scaled)
+
+    raw_scores = model.score_samples(scaled)
+    min_s, max_s = raw_scores.min(), raw_scores.max()
+    if max_s == min_s:
+        return result
+
+    normalized = 1.0 - (raw_scores - min_s) / (max_s - min_s)
+    for pid, idx in product_last_idx.items():
+        result[pid] = round(float(min(normalized[idx], 1.0)), 4)
+
+    return result

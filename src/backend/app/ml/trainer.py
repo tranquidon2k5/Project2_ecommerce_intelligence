@@ -6,16 +6,15 @@ Analytics training and daily compute:
 import logging
 from datetime import date, datetime, timedelta
 
+import numpy as np
 import pandas as pd
-from sqlalchemy import select, func, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.product import Product, PriceHistory
 from ..models.analytics import ProductAnalytics
-from ..models.review import Review
 from .price_predictor import predict_price
 from .anomaly_detector import compute_anomaly_score
-from .review_analyzer import analyze_reviews_batch
 from .recommender import compute_buy_signal
 
 logger = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ async def compute_daily_analytics(db: AsyncSession) -> dict:
     for product_id, current_price in products:
         try:
             # Load price history (last 90 days)
-            cutoff = datetime.now() - timedelta(days=90)
+            cutoff = datetime.utcnow() - timedelta(days=90)
             ph_result = await db.execute(
                 select(PriceHistory.crawled_at, PriceHistory.price)
                 .where(PriceHistory.product_id == product_id)
@@ -79,7 +78,6 @@ async def compute_daily_analytics(db: AsyncSession) -> dict:
 
             # Volatility: std/mean
             if len(prices_30d) > 1:
-                import numpy as np
                 volatility = float(np.std(prices_30d) / (np.mean(prices_30d) + 1e-9))
             else:
                 volatility = 0.0
@@ -117,6 +115,11 @@ async def compute_daily_analytics(db: AsyncSession) -> dict:
             logger.error(f"Error computing analytics for product {product_id}: {e}")
             errors += 1
 
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as e:
+        logger.error(f"Failed to commit analytics: {e}")
+        await db.rollback()
+        raise
     logger.info(f"Daily analytics done: {processed} processed, {errors} errors")
     return {"processed": processed, "errors": errors, "date": str(today)}

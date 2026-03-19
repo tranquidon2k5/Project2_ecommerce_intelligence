@@ -1,15 +1,9 @@
 """Price prediction using Prophet (30+ data points) or moving-average fallback."""
-import os
-import pickle
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import date, timedelta
 from typing import Any
 
 import numpy as np
 import pandas as pd
-
-MODEL_DIR = Path(__file__).parent / "models"
-MODEL_DIR.mkdir(exist_ok=True)
 
 
 def _moving_average_predict(prices: list[float], days: int) -> list[dict]:
@@ -17,7 +11,7 @@ def _moving_average_predict(prices: list[float], days: int) -> list[dict]:
     arr = np.array(prices)
     if len(arr) < 3:
         last = float(arr[-1]) if len(arr) > 0 else 0
-        return [{"date": (datetime.now() + timedelta(days=i+1)).strftime("%Y-%m-%d"), "price": last, "lower": last * 0.95, "upper": last * 1.05} for i in range(days)]
+        return [{"date": (date.today() + timedelta(days=i+1)).strftime("%Y-%m-%d"), "price": last, "lower": last * 0.95, "upper": last * 1.05} for i in range(days)]
 
     window = min(7, len(arr))
     ma = float(np.mean(arr[-window:]))
@@ -28,7 +22,7 @@ def _moving_average_predict(prices: list[float], days: int) -> list[dict]:
         predicted = ma + trend * (i + 1)
         predicted = max(predicted, 0)
         result.append({
-            "date": (datetime.now() + timedelta(days=i+1)).strftime("%Y-%m-%d"),
+            "date": (date.today() + timedelta(days=i+1)).strftime("%Y-%m-%d"),
             "price": round(predicted),
             "lower": round(predicted * 0.92),
             "upper": round(predicted * 1.08),

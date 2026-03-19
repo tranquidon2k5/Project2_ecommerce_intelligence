@@ -7,7 +7,6 @@ import re
 from dataclasses import dataclass
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
 
 
 # Positive/negative Vietnamese sentiment lexicon (simplified)
@@ -97,19 +96,6 @@ def _extract_features(text: str, rating: int) -> ReviewFeatures:
     )
 
 
-def _features_to_array(f: ReviewFeatures) -> np.ndarray:
-    return np.array([
-        f.text_length,
-        f.word_count,
-        f.positive_word_ratio,
-        f.negative_word_ratio,
-        f.generic_phrase_count,
-        f.rating_sentiment_mismatch,
-        f.exclamation_ratio,
-        int(f.has_image),
-    ])
-
-
 def _is_fake_rule_based(f: ReviewFeatures) -> tuple[bool, float]:
     """
     Rule-based fake detection. Returns (is_fake, confidence).
@@ -152,4 +138,4 @@ def analyze_reviews_batch(reviews: list[dict]) -> list[dict]:
     Each review dict: {text: str, rating: int}
     Returns list of {sentiment_score, is_fake, fake_confidence}
     """
-    return [analyze_review(r["text"], r["rating"]) for r in reviews]
+    return [analyze_review(r.get("text", ""), r.get("rating", 3)) for r in reviews]

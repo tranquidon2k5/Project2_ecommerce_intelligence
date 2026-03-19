@@ -35,7 +35,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./src/backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
@@ -51,13 +51,13 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./scripts:/app/scripts
+      - ./src/scripts:/app/scripts
     networks:
       - shopsmart-network
 
   frontend:
     build:
-      context: ./frontend
+      context: ./src/frontend
       dockerfile: Dockerfile
     ports:
       - "3000:80"
@@ -68,7 +68,7 @@ services:
 
   crawler:
     build:
-      context: ./crawler
+      context: ./src/crawler
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-shopsmart}:${POSTGRES_PASSWORD:-shopsmart123}@db:5432/${POSTGRES_DB:-shopsmart_db}

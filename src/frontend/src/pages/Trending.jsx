@@ -12,7 +12,7 @@ const TABS = [
 ]
 
 export default function Trending() {
-  const [activeTab, setActiveTab] = useState('price_drop')
+  const [activeTab, setActiveTab] = useState('most_reviewed')
   const { data, isLoading } = useTrending({ type: activeTab, limit: 20 })
   const products = data?.data || []
 

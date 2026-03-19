@@ -3,6 +3,7 @@ import { useMarketOverview, useTrending } from '../hooks/useAnalytics'
 import ProductCard from '../components/common/ProductCard'
 import { CardSkeleton, StatSkeleton } from '../components/common/LoadingSkeleton'
 import { formatRelativeTime } from '../utils/formatDate'
+import PlatformCompareChart from '../components/charts/PlatformCompareChart'
 
 function StatCard({ icon: Icon, label, value, sub, color = 'text-primary-600' }) {
   return (
@@ -21,7 +22,7 @@ function StatCard({ icon: Icon, label, value, sub, color = 'text-primary-600' })
 
 export default function Dashboard() {
   const { data: overview, isLoading: overviewLoading } = useMarketOverview()
-  const { data: trending, isLoading: trendingLoading } = useTrending({ type: 'best_deal', limit: 8 })
+  const { data: trending, isLoading: trendingLoading } = useTrending({ type: 'most_reviewed', limit: 8 })
 
   const stats = overview?.data
   const products = trending?.data || []
@@ -68,25 +69,30 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Platform Overview */}
+      {/* Platform Overview Chart */}
       {!overviewLoading && platformChartData.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
           <h2 className="text-base font-semibold mb-4">Phân bố theo sàn</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {platformChartData.map((p) => (
-              <div key={p.platform} className="text-center">
-                <p className="text-lg font-bold">{p.product_count.toLocaleString()}</p>
-                <p className="text-sm text-gray-500 capitalize">{p.platform}</p>
-                {p.avg_discount > 0 && <p className="text-xs text-green-600">-{p.avg_discount}% TB</p>}
-              </div>
-            ))}
-          </div>
+          {platformChartData.some(p => p.avg_price > 0) ? (
+            <PlatformCompareChart data={platformChartData} />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {platformChartData.map((p) => (
+                <div key={p.platform} className="text-center p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
+                  <p className="text-2xl font-bold text-primary-600">{p.product_count.toLocaleString()}</p>
+                  <p className="text-sm text-gray-500 capitalize mt-1">{p.platform}</p>
+                  <p className="text-xs text-gray-400">sản phẩm</p>
+                  {p.avg_discount > 0 && <p className="text-xs text-green-600 mt-1">-{p.avg_discount}% TB</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Best Deals */}
+      {/* Top Reviewed Products */}
       <div>
-        <h2 className="text-base font-semibold mb-3">Deals tốt nhất hôm nay</h2>
+        <h2 className="text-base font-semibold mb-3">Sản phẩm nổi bật</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {trendingLoading
             ? Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)

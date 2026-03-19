@@ -39,7 +39,7 @@ docker-compose up     # Alternative: start all services
 
 **Backend only:**
 ```bash
-cd backend
+cd src/backend
 uvicorn app.main:app --reload --port 8000
 alembic upgrade head                          # Apply migrations
 alembic revision --autogenerate -m "msg"      # Create migration
@@ -49,7 +49,7 @@ python -m pytest tests/test_products.py -k "test_name"  # Single test
 
 **Frontend only:**
 ```bash
-cd frontend
+cd src/frontend
 npm install
 npm run dev           # Vite dev server on :3000
 npm run build         # Production build
@@ -57,9 +57,9 @@ npm run build         # Production build
 
 **Crawler only:**
 ```bash
-cd crawler
+cd src/crawler
 scrapy crawl tiki -a category=dien-thoai
-python ../scripts/generate_fake_data.py       # Generate 10k mock products
+python ../src/scripts/generate_fake_data.py   # Generate 10k mock products
 ```
 
 ## Key Design Decisions
@@ -84,11 +84,11 @@ Errors return: `{"success": false, "data": null, "error": {"code": "...", "messa
 
 ## Backend Structure
 
-- `backend/app/models/` — SQLAlchemy ORM (9 tables: platforms, categories, products, price_history, reviews, product_analytics, price_alerts, crawl_logs, ml_model_metrics)
-- `backend/app/schemas/` — Pydantic request/response validation
-- `backend/app/api/` — Route handlers grouped by domain (products, analytics, ai_insights, alerts, system)
-- `backend/app/services/` — Business logic layer (product_service, analytics_service, alert_service, cache_service)
-- `backend/app/ml/` — ML module (price_predictor, anomaly_detector, review_analyzer, recommender, trainer); saved models in `ml/models/*.pkl`
+- `src/backend/app/models/` — SQLAlchemy ORM (9 tables: platforms, categories, products, price_history, reviews, product_analytics, price_alerts, crawl_logs, ml_model_metrics)
+- `src/backend/app/schemas/` — Pydantic request/response validation
+- `src/backend/app/api/` — Route handlers grouped by domain (products, analytics, ai_insights, alerts, system)
+- `src/backend/app/services/` — Business logic layer (product_service, analytics_service, alert_service, cache_service)
+- `src/backend/app/ml/` — ML module (price_predictor, anomaly_detector, review_analyzer, recommender, trainer); saved models in `ml/models/*.pkl`
 
 ## Frontend Structure
 
@@ -96,14 +96,14 @@ Errors return: `{"success": false, "data": null, "error": {"code": "...", "messa
 - State: Zustand stores (`useProductStore`, `useFilterStore`)
 - Data fetching: React Query hooks in `hooks/`
 - Charts: Recharts (PriceHistoryChart, PricePredictionChart, SentimentChart)
-- API client: Axios instance in `services/api.js`
+- API client: Axios instance in `src/frontend/src/services/api.js`
 
 ## Crawler Structure
 
-- `crawler/shopsmart_crawler/spiders/` — Per-platform spiders (tiki_spider priority, shopee_spider uses Playwright)
-- `crawler/shopsmart_crawler/pipelines.py` — CleaningPipeline → PostgresPipeline (batch upserts of 1000 rows)
+- `src/crawler/shopsmart_crawler/spiders/` — Per-platform spiders (tiki_spider priority, shopee_spider uses Playwright)
+- `src/crawler/shopsmart_crawler/pipelines.py` — CleaningPipeline → PostgresPipeline (batch upserts of 1000 rows)
 - Anti-bot: UA rotation, 2s delay, exponential backoff, circuit breaker at >20% error rate
-- Fallback: `scripts/generate_fake_data.py` generates synthetic data if crawling is blocked
+- Fallback: `src/scripts/generate_fake_data.py` generates synthetic data if crawling is blocked
 
 ## Planning Docs
 

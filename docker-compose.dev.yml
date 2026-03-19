@@ -3,29 +3,29 @@ version: '3.9'
 services:
   backend:
     build:
-      context: ./backend
+      context: ./src/backend
       dockerfile: Dockerfile
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
-      - ./backend:/app
-      - ./scripts:/app/scripts
+      - ./src/backend:/app
+      - ./src/scripts:/app/scripts
     environment:
       APP_ENV: development
       DEBUG: "true"
 
   frontend:
     build:
-      context: ./frontend
+      context: ./src/frontend
       dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
     command: npm run dev -- --host 0.0.0.0
     volumes:
-      - ./frontend:/app
+      - ./src/frontend:/app
       - /app/node_modules
 
   crawler:
     volumes:
-      - ./crawler:/app
+      - ./src/crawler:/app
     environment:
       CRAWLER_DELAY: "1"

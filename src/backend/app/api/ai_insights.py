@@ -1,10 +1,18 @@
+"""AI Insights API — price prediction, anomaly detection, review analysis."""
+from datetime import datetime, timedelta
+
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
 
 from ..database import get_db
-from ..models.product import Product
 from ..models.analytics import ProductAnalytics
+from ..models.product import PriceHistory, Product
+from ..ml.price_predictor import predict_price
+from ..ml.anomaly_detector import compute_anomaly_score
+from ..ml.review_analyzer import analyze_reviews_batch
+from ..ml.recommender import compute_buy_signal
 
 router = APIRouter(prefix="/ai", tags=["AI Insights"])
 
@@ -14,20 +22,34 @@ def success_response(data):
 
 
 @router.get("/predict-price/{product_id}")
-async def predict_price(
+async def predict_price_endpoint(
     product_id: int,
     days: int = Query(7, ge=1, le=30),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get price prediction for a product (stub — ML models in Sprint 2)."""
-    product_result = await db.execute(
-        select(Product).where(Product.id == product_id)
-    )
+    """Predict future prices using Prophet (or moving-average fallback)."""
+    product_result = await db.execute(select(Product).where(Product.id == product_id))
     product = product_result.scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail={"code": "PRODUCT_NOT_FOUND", "message": f"Product {product_id} not found"})
 
-    # Return analytics if available
+    cutoff = datetime.utcnow() - timedelta(days=90)
+    ph_result = await db.execute(
+        select(PriceHistory.crawled_at, PriceHistory.price)
+        .where(PriceHistory.product_id == product_id)
+        .where(PriceHistory.crawled_at >= cutoff)
+        .order_by(PriceHistory.crawled_at)
+    )
+    ph_rows = ph_result.all()
+
+    prices_df = pd.DataFrame(
+        [(r.crawled_at, float(r.price)) for r in ph_rows],
+        columns=["ds", "y"],
+    ) if ph_rows else pd.DataFrame(columns=["ds", "y"])
+
+    pred = predict_price(product_id, prices_df, days)
+
+    # Get latest analytics for buy signal
     analytics_result = await db.execute(
         select(ProductAnalytics)
         .where(ProductAnalytics.product_id == product_id)
@@ -39,12 +61,15 @@ async def predict_price(
     return success_response({
         "product_id": product_id,
         "current_price": product.current_price,
-        "predictions": [],
+        "predictions": pred["predictions"],
+        "model_used": pred["model_used"],
+        "mae": pred.get("mae", 0.0),
+        "note": pred.get("note"),
         "recommendation": {
             "signal": analytics.buy_signal if analytics else "hold",
-            "reason": "ML models will be trained in Sprint 2",
+            "trend": analytics.trend_direction if analytics else "stable",
         },
-        "model_info": {"model": "stub", "note": "Prophet model training in Sprint 2"},
+        "model_info": {"model": pred["model_used"], "data_points": len(ph_rows)},
     })
 
 
@@ -53,8 +78,7 @@ async def get_anomalies(
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get products with anomalous pricing."""
-    from sqlalchemy import func
+    """Get products with anomalous pricing (anomaly_score > 0.7)."""
     result = await db.execute(
         select(ProductAnalytics, Product.name, Product.current_price)
         .join(Product, ProductAnalytics.product_id == Product.id)
@@ -71,6 +95,23 @@ async def get_anomalies(
             "anomaly_score": float(row[0].anomaly_score),
             "buy_signal": row[0].buy_signal,
             "current_price": row[2],
+            "trend_direction": row[0].trend_direction,
         }
         for row in rows
     ])
+
+
+@router.post("/check-reviews")
+async def check_reviews(body: dict, db: AsyncSession = Depends(get_db)):
+    """
+    Analyze a list of reviews for sentiment and fake detection.
+    Body: {"reviews": [{"text": "...", "rating": 5}, ...]}
+    """
+    reviews = body.get("reviews", [])
+    if not reviews:
+        raise HTTPException(status_code=422, detail="reviews list is required")
+    if len(reviews) > 100:
+        raise HTTPException(status_code=422, detail="Max 100 reviews per request")
+
+    results = analyze_reviews_batch(reviews)
+    return success_response({"results": results, "total": len(results)})

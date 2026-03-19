@@ -7,8 +7,8 @@ import BuySignalBadge from '../components/common/BuySignalBadge'
 
 export default function AIInsights() {
   const [previewId, setPreviewId] = useState(null)
-  const { data: anomaliesData, isLoading } = useAnomalies(20)
-  const { data: predData } = usePricePrediction(previewId, 7)
+  const { data: anomaliesData, isLoading, isError } = useAnomalies(20)
+  const { data: predData, isLoading: predLoading } = usePricePrediction(previewId, 7)
 
   const anomalies = anomaliesData?.data ?? []
   const predictions = predData?.data?.predictions ?? []
@@ -37,20 +37,31 @@ export default function AIInsights() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {isLoading
                 ? Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} cols={5} />)
-                : anomalies.length === 0
+                : isError
                   ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-10 text-gray-400">
-                        Không phát hiện bất thường giá nào
+                      <td colSpan={5} className="text-center py-10 text-red-500">
+                        Lỗi tải dữ liệu bất thường giá
                       </td>
                     </tr>
                   )
-                  : anomalies.map((row) => (
-                    <tr
-                      key={row.product_id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
-                      onClick={() => setPreviewId(row.product_id === previewId ? null : row.product_id)}
-                    >
+                  : anomalies.length === 0
+                    ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-10 text-gray-400">
+                          Không phát hiện bất thường giá nào
+                        </td>
+                      </tr>
+                    )
+                    : anomalies.map((row) => (
+                      <tr
+                        key={row.product_id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+                        onClick={() => setPreviewId(row.product_id === previewId ? null : row.product_id)}
+                        onKeyDown={(e) => e.key === 'Enter' && setPreviewId(row.product_id === previewId ? null : row.product_id)}
+                        role="button"
+                        tabIndex={0}
+                      >
                       <td className="px-5 py-3 max-w-xs truncate font-medium">{row.product_name}</td>
                       <td className="px-5 py-3 text-right text-primary-600">{formatPrice(row.current_price)}</td>
                       <td className="px-5 py-3 text-right">
@@ -75,9 +86,11 @@ export default function AIInsights() {
       {previewId && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
           <h2 className="text-lg font-semibold mb-4">Dự báo giá 7 ngày tới</h2>
-          {predictions.length > 0
-            ? <PricePredictionChart history={[]} predictions={predictions} />
-            : <p className="text-center text-gray-400 py-10">Đang tải dự báo...</p>
+          {predLoading
+            ? <p className="text-center text-gray-400 py-10">Đang tải dự báo...</p>
+            : predictions.length > 0
+              ? <PricePredictionChart history={[]} predictions={predictions} />
+              : <p className="text-center text-gray-400 py-10">Không có dữ liệu dự báo</p>
           }
         </div>
       )}

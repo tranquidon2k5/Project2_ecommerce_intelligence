@@ -45,9 +45,12 @@ async def health_check():
     return {"status": "ok", "version": "1.0.0"}
 
 
+import logging as _logging
+_logger = _logging.getLogger(__name__)
+
 # Include routers (will be added as we build them)
 try:
     from .api.router import router
     app.include_router(router, prefix=settings.api_v1_prefix)
-except ImportError:
-    pass  # Router not yet created
+except ImportError as e:
+    _logger.warning(f"API router not loaded: {e}")

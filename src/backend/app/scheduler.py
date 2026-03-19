@@ -29,6 +29,7 @@ async def _check_alerts():
     async with AsyncSessionLocal() as db:
         try:
             await check_and_trigger_alerts(db)
+            await db.commit()
             logger.info("Alert check complete")
         except Exception as e:
             logger.error(f"Alert check failed: {e}")

@@ -10,9 +10,7 @@ from ..database import get_db
 from ..models.analytics import ProductAnalytics
 from ..models.product import PriceHistory, Product
 from ..ml.price_predictor import predict_price
-from ..ml.anomaly_detector import compute_anomaly_score
 from ..ml.review_analyzer import analyze_reviews_batch
-from ..ml.recommender import compute_buy_signal
 
 router = APIRouter(prefix="/ai", tags=["AI Insights"])
 
@@ -102,7 +100,7 @@ async def get_anomalies(
 
 
 @router.post("/check-reviews")
-async def check_reviews(body: dict, db: AsyncSession = Depends(get_db)):
+async def check_reviews(body: dict):
     """
     Analyze a list of reviews for sentiment and fake detection.
     Body: {"reviews": [{"text": "...", "rating": 5}, ...]}

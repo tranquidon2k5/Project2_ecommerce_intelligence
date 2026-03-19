@@ -6,6 +6,7 @@ import ProductDetail from './pages/ProductDetail'
 import PriceCompare from './pages/PriceCompare'
 import Trending from './pages/Trending'
 import Alerts from './pages/Alerts'
+import AIInsights from './pages/AIInsights'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="compare" element={<PriceCompare />} />
         <Route path="trending" element={<Trending />} />
         <Route path="alerts" element={<Alerts />} />
+        <Route path="insights" element={<AIInsights />} />
       </Route>
     </Routes>
   )

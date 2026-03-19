@@ -13,8 +13,12 @@ async def lifespan(app: FastAPI):
         # Tables are created via Alembic migrations in production
         # In dev, we can create them here if needed
         pass
+    from .scheduler import start_scheduler
+    start_scheduler()
     yield
     # Shutdown
+    from .scheduler import stop_scheduler
+    stop_scheduler()
     await engine.dispose()
 
 

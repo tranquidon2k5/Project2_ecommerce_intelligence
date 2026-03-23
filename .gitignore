@@ -79,3 +79,5 @@ Thumbs.db
 *.jl
 # *.json
 # *.csv
+.playwright-mcp
+.github

@@ -30,3 +30,9 @@ try:
     router.include_router(ai_router)
 except ImportError:
     pass
+
+try:
+    from .export import router as export_router
+    router.include_router(export_router)
+except ImportError:
+    pass

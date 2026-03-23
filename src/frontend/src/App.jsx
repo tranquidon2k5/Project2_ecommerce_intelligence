@@ -7,6 +7,7 @@ import PriceCompare from './pages/PriceCompare'
 import Trending from './pages/Trending'
 import Alerts from './pages/Alerts'
 import AIInsights from './pages/AIInsights'
+import SystemStatus from './pages/SystemStatus'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="trending" element={<Trending />} />
         <Route path="alerts" element={<Alerts />} />
         <Route path="insights" element={<AIInsights />} />
+        <Route path="system" element={<SystemStatus />} />
       </Route>
     </Routes>
   )

@@ -1,13 +1,20 @@
+import os
+import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import engine, Base
+from .metrics import metrics_collector
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Setup structured logging in production
+    if settings.app_env != "development":
+        from .logging_config import setup_logging
+        setup_logging()
     # Startup
     async with engine.begin() as conn:
         # Tables are created via Alembic migrations in production
@@ -33,11 +40,24 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        os.environ.get("FRONTEND_URL", ""),
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def track_metrics(request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    metrics_collector.record_request(duration_ms, response.status_code)
+    return response
 
 
 @app.get("/health")

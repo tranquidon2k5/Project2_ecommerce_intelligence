@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useState } from 'react'
-import { ExternalLink, Bell, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react'
+import { ExternalLink, Bell, TrendingUp, TrendingDown, Minus, AlertTriangle, Download } from 'lucide-react'
 import { useProduct } from '../hooks/useProducts'
 import { usePriceHistory } from '../hooks/usePriceHistory'
 import { alertService } from '../services/alertService'
@@ -12,6 +12,7 @@ import { CardSkeleton } from '../components/common/LoadingSkeleton'
 import { formatPrice } from '../utils/formatPrice'
 import { formatRelativeTime } from '../utils/formatDate'
 import { PLATFORM_LABELS, PERIOD_OPTIONS } from '../utils/constants'
+import { downloadCsv } from '../utils/exportCsv'
 
 function AlertModal({ productId, productName, onClose }) {
   const [email, setEmail] = useState('')
@@ -98,7 +99,7 @@ export default function ProductDetail() {
   const product = productData?.data
   if (!product) return <p className="text-gray-400">Không tìm thấy sản phẩm</p>
 
-  const history = historyData?.data || []
+  const history = historyData?.data?.price_points || []
   const ai = product.ai_insights || {}
   const priceStats = product.price_stats || {}
 
@@ -168,6 +169,14 @@ export default function ProductDetail() {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold">Lịch sử giá</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => downloadCsv(`/export/price-history/${id}?period=${period}`, `price_history_${id}.csv`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Xuất lịch sử giá
+            </button>
           <div className="flex gap-1">
             {PERIOD_OPTIONS.map((p) => (
               <button key={p.value} onClick={() => setPeriod(p.value)}
@@ -175,6 +184,7 @@ export default function ProductDetail() {
                 {p.label}
               </button>
             ))}
+          </div>
           </div>
         </div>
         {histLoading

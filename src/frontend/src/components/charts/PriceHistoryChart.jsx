@@ -19,7 +19,7 @@ function CustomTooltip({ active, payload, label }) {
 export default function PriceHistoryChart({ data = [], minPrice, maxPrice }) {
   const chartData = data.map((point) => ({
     date: point.crawled_at || point.date,
-    price: point.price,
+    price: point.price ?? point.avg,
   }))
 
   return (

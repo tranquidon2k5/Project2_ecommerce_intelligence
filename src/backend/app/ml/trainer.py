@@ -1,3 +1,4 @@
+
 """
 Analytics training and daily compute:
 - compute_daily_analytics(): updates product_analytics table for all products

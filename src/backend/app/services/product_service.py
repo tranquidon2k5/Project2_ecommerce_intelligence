@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import func, select, text, and_, or_, desc, asc
+from sqlalchemy import func, select, text, and_, or_, desc, asc, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -90,7 +90,7 @@ async def get_products(
     else:  # relevance
         if q:
             query = query.order_by(
-                desc(text(f"similarity(products.name, '{q}')"))
+                desc(text("similarity(products.name, :q)").bindparams(q=q))
             )
         else:
             query = query.order_by(desc(Product.last_crawled_at))
@@ -354,30 +354,55 @@ async def get_product_reviews(
     result = await db.execute(query)
     reviews = result.scalars().all()
 
-    # Build summary
-    all_reviews_query = select(Review).where(Review.product_id == product_id)
-    all_result = await db.execute(all_reviews_query)
-    all_reviews = all_result.scalars().all()
+    # Build summary using SQL aggregates
+    agg_query = select(
+        func.count(Review.id).label("total_reviews"),
+        func.avg(Review.rating).label("avg_rating"),
+        func.sum(case((Review.is_fake == True, 1), else_=0)).label("fake_count"),
+        func.avg(Review.sentiment_score).label("avg_sentiment"),
+    ).where(Review.product_id == product_id)
+    agg_result = await db.execute(agg_query)
+    agg = agg_result.one()
 
-    total_reviews = len(all_reviews)
-    avg_rating = sum(r.rating for r in all_reviews if r.rating) / max(1, sum(1 for r in all_reviews if r.rating))
-
-    rating_dist = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
-    fake_count = 0
-    sentiment_scores = []
-
-    for r in all_reviews:
-        if r.rating:
-            rating_dist[str(r.rating)] = rating_dist.get(str(r.rating), 0) + 1
-        if r.is_fake:
-            fake_count += 1
-        if r.sentiment_score is not None:
-            sentiment_scores.append(float(r.sentiment_score))
-
+    total_reviews = agg.total_reviews or 0
+    avg_rating = float(agg.avg_rating) if agg.avg_rating else 0.0
+    fake_count = int(agg.fake_count) if agg.fake_count else 0
     fake_percent = (fake_count / total_reviews * 100) if total_reviews > 0 else 0
 
-    pos = sum(1 for s in sentiment_scores if s > 0.1) / max(1, len(sentiment_scores)) * 100
-    neg = sum(1 for s in sentiment_scores if s < -0.1) / max(1, len(sentiment_scores)) * 100
+    # Rating distribution via GROUP BY
+    rating_dist = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+    dist_query = (
+        select(Review.rating, func.count(Review.id))
+        .where(Review.product_id == product_id)
+        .where(Review.rating.isnot(None))
+        .group_by(Review.rating)
+    )
+    dist_result = await db.execute(dist_query)
+    for rating_val, cnt in dist_result.all():
+        if rating_val and str(int(rating_val)) in rating_dist:
+            rating_dist[str(int(rating_val))] = cnt
+
+    # Sentiment buckets
+    sentiment_total_query = select(func.count(Review.id)).where(
+        Review.product_id == product_id, Review.sentiment_score.isnot(None)
+    )
+    sentiment_total_result = await db.execute(sentiment_total_query)
+    sentiment_total = sentiment_total_result.scalar() or 0
+
+    if sentiment_total > 0:
+        pos_query = select(func.count(Review.id)).where(
+            Review.product_id == product_id, Review.sentiment_score > 0.1
+        )
+        neg_query = select(func.count(Review.id)).where(
+            Review.product_id == product_id, Review.sentiment_score < -0.1
+        )
+        pos_result = await db.execute(pos_query)
+        neg_result = await db.execute(neg_query)
+        pos = (pos_result.scalar() or 0) / sentiment_total * 100
+        neg = (neg_result.scalar() or 0) / sentiment_total * 100
+    else:
+        pos = 0.0
+        neg = 0.0
     neu = 100 - pos - neg
 
     summary = {

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useTrending } from '../hooks/useAnalytics'
 import ProductCard from '../components/common/ProductCard'
 import { CardSkeleton } from '../components/common/LoadingSkeleton'
+import { Download } from 'lucide-react'
+import { downloadCsv } from '../utils/exportCsv'
 import clsx from 'clsx'
 
 const TABS = [
@@ -18,7 +20,16 @@ export default function Trending() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Trending</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Trending</h1>
+        <button
+          onClick={() => downloadCsv(`/export/products`, `trending_${activeTab}.csv`)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Xuất CSV
+        </button>
+      </div>
 
       <div className="flex gap-2 flex-wrap">
         {TABS.map((tab) => (

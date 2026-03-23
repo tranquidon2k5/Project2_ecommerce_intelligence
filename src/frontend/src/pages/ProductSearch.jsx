@@ -8,6 +8,8 @@ import SearchBar from '../components/common/SearchBar'
 import Pagination from '../components/common/Pagination'
 import { CardSkeleton } from '../components/common/LoadingSkeleton'
 import { SORT_OPTIONS } from '../utils/constants'
+import { Download } from 'lucide-react'
+import { downloadCsv } from '../utils/exportCsv'
 
 export default function ProductSearch() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -76,9 +78,25 @@ export default function ProductSearch() {
         </select>
       </div>
 
-      {meta.total != null && (
-        <p className="text-sm text-gray-500">Tìm thấy {meta.total?.toLocaleString()} sản phẩm</p>
-      )}
+      <div className="flex items-center justify-between">
+        {meta.total != null && (
+          <p className="text-sm text-gray-500">Tìm thấy {meta.total?.toLocaleString()} sản phẩm</p>
+        )}
+        <button
+          onClick={() => {
+            const queryParts = []
+            if (debouncedQ) queryParts.push(`q=${encodeURIComponent(debouncedQ)}`)
+            if (platform) queryParts.push(`platform=${platform}`)
+            if (minPrice) queryParts.push(`min_price=${minPrice}`)
+            if (maxPrice) queryParts.push(`max_price=${maxPrice}`)
+            downloadCsv(`/export/products${queryParts.length ? '?' + queryParts.join('&') : ''}`, 'products.csv')
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Xuất CSV
+        </button>
+      </div>
 
       {isError && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-sm text-red-700 dark:text-red-400">

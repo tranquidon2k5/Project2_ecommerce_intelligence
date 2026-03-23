@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-import redis.asyncio as aioredis
 
 from ..database import get_db
 from ..config import settings
@@ -11,12 +10,27 @@ router = APIRouter(tags=["System"])
 
 
 @router.get("/health")
-async def health_check():
-    """Health check endpoint."""
+async def health_check(db: AsyncSession = Depends(get_db)):
+    """Health check endpoint with DB and Redis verification."""
+    checks = {"api": "ok"}
+    try:
+        await db.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception:
+        checks["database"] = "error"
+    try:
+        from ..services.cache_service import cache_service
+        redis_client = await cache_service.get_client()
+        await redis_client.ping()
+        checks["redis"] = "ok"
+    except Exception:
+        checks["redis"] = "error"
+    overall = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
     return {
         "success": True,
         "data": {
-            "status": "ok",
+            "status": overall,
+            "checks": checks,
             "version": "1.0.0",
         },
         "message": None,
@@ -56,21 +70,39 @@ async def crawl_stats(
 async def system_stats(
     db: AsyncSession = Depends(get_db),
 ):
-    """Get system statistics."""
+    """Get system statistics with data freshness and API metrics."""
     from sqlalchemy import func
     from ..models.product import Product, PriceHistory
     from ..models.review import Review
+    from ..metrics import metrics_collector
 
     product_count = await db.execute(select(func.count(Product.id)))
     price_count = await db.execute(select(func.count(PriceHistory.id)))
     review_count = await db.execute(select(func.count(Review.id)))
 
+    # Data freshness
+    last_crawl = await db.execute(select(func.max(CrawlLog.finished_at)))
+    last_price = await db.execute(select(func.max(PriceHistory.crawled_at)))
+
+    from datetime import datetime
+    now = datetime.utcnow()
+    last_crawl_at = last_crawl.scalar()
+    last_price_at = last_price.scalar()
+
     return {
         "success": True,
         "data": {
-            "products": product_count.scalar() or 0,
-            "price_history_records": price_count.scalar() or 0,
-            "reviews": review_count.scalar() or 0,
+            "counts": {
+                "products": product_count.scalar() or 0,
+                "price_history_records": price_count.scalar() or 0,
+                "reviews": review_count.scalar() or 0,
+            },
+            "data_freshness": {
+                "last_crawl_at": last_crawl_at.isoformat() if last_crawl_at else None,
+                "last_price_point_at": last_price_at.isoformat() if last_price_at else None,
+                "minutes_since_last_crawl": round((now - last_crawl_at).total_seconds() / 60, 1) if last_crawl_at else None,
+            },
+            "api_metrics": metrics_collector.get_summary(),
         },
         "message": None,
     }

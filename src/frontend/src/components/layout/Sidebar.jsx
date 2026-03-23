@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Search, TrendingUp, BarChart2, Bell, Brain } from 'lucide-react'
+import { LayoutDashboard, Search, TrendingUp, BarChart2, Bell, Brain, Activity } from 'lucide-react'
 import clsx from 'clsx'
 
 const NAV_ITEMS = [
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/compare', icon: BarChart2, label: 'So sánh giá' },
   { to: '/alerts', icon: Bell, label: 'Price Alerts' },
   { to: '/insights', icon: Brain, label: 'AI Insights' },
+  { to: '/system', icon: Activity, label: 'Hệ thống' },
 ]
 
 export default function Sidebar() {

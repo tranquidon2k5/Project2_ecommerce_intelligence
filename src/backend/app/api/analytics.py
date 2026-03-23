@@ -3,9 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
+from ..config import settings
 from ..services.analytics_service import (
     get_trending, get_price_comparison, get_market_overview, get_category_insights
 )
+from ..services.cache_service import cache_service
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -23,8 +25,14 @@ async def trending_products(
     db: AsyncSession = Depends(get_db),
 ):
     """Get trending products."""
+    cache_key = f"trending:{type}:{category_id}:{platform}:{limit}"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
     products = await get_trending(db, trend_type=type, category_id=category_id, platform=platform, limit=limit)
-    return success_response(products)
+    response = success_response(products)
+    await cache_service.set(cache_key, response, ttl=settings.cache_ttl_trending)
+    return response
 
 
 @router.get("/price-comparison")
@@ -43,8 +51,14 @@ async def market_overview(
     db: AsyncSession = Depends(get_db),
 ):
     """Get market overview statistics."""
+    cache_key = "market:overview"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
     result = await get_market_overview(db)
-    return success_response(result)
+    response = success_response(result)
+    await cache_service.set(cache_key, response, ttl=settings.cache_ttl_analytics)
+    return response
 
 
 @router.get("/category-insights/{category_id}")
@@ -53,7 +67,13 @@ async def category_insights(
     db: AsyncSession = Depends(get_db),
 ):
     """Get insights for a category."""
+    cache_key = f"category:insights:{category_id}"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
     result = await get_category_insights(db, category_id)
     if not result:
         raise HTTPException(status_code=404, detail={"code": "CATEGORY_NOT_FOUND", "message": f"Category {category_id} not found"})
-    return success_response(result)
+    response = success_response(result)
+    await cache_service.set(cache_key, response, ttl=settings.cache_ttl_analytics)
+    return response
